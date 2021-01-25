@@ -2,14 +2,16 @@
 
 namespace App\Models;
 
-use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Auth\Authenticatable;
+use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Hash;
+use Tymon\JWTAuth\Contracts\JWTSubject;
 
-class User extends Authenticatable
-{
-    use HasFactory, Notifiable;
+class User extends Model implements AuthenticatableContract, JWTSubject {
+    use HasFactory, Notifiable, Authenticatable;
 
     /**
      * The attributes that are mass assignable.
@@ -40,4 +42,29 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
     ];
+
+    public static function attempt($credentials) {
+        if (!isset($credentials['password']) || !isset($credentials['email'])) {
+            return false;
+        }
+        $user = self::where('email', $credentials['email'])->first();
+
+        if (!$user) {
+            return false;
+        }
+
+        if ((Hash::check($credentials['password'], $user->password)) == false) {
+            return false;
+        }
+
+        return $user;
+    }
+
+    public function getJWTIdentifier() {
+        return $this->getKey();
+    }
+
+    public function getJWTCustomClaims() {
+        return [];
+    }
 }
